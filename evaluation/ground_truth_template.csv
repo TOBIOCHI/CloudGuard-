@@ -1,0 +1,16 @@
+resource_type,resource_id,rule_id,expected
+s3_bucket,cg-test-public-policy,S3-01,FAIL
+s3_bucket,cg-test-public-acl,S3-02,FAIL
+s3_bucket,cg-test-private,S3-01,PASS
+s3_bucket,cg-test-private,S3-02,PASS
+s3_bucket,cg-test-private,S3-03,PASS
+ec2_security_group,sg-0123456789abcdef0,EC2-01,FAIL
+ec2_security_group,sg-0fedcba9876543210,EC2-02,FAIL
+ec2_security_group,sg-01112222333344445,EC2-01,PASS
+iam_user,cg-nomfa-user,IAM-02,FAIL
+iam_user,cg-admin-user,IAM-03,FAIL
+iam_user,cg-readonly-user,IAM-03,PASS
+ebs_volume,vol-0123456789abcdef0,ENC-02,FAIL
+ebs_volume,vol-0fedcba9876543210,ENC-02,PASS
+cloudtrail_trail,cg-audit-trail,LOG-02,FAIL
+cloudtrail_trail,cg-secure-trail,LOG-02,PASS
