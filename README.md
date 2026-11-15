@@ -1,34 +1,39 @@
+# CloudGuard — AWS Cloud Misconfiguration Detection Tool
 
-# CloudGuard
-### Cloud Misconfiguration Detection Tool
+CloudGuard is a Python-based AWS security auditing tool designed to identify common cloud configuration weaknesses through read-only AWS API calls.
 
-CloudGuard is a Python-based AWS cloud security auditing tool designed to identify common cloud configuration weaknesses through read-only AWS API calls.
+It combines modular security scanners, a central scan manager, risk classification, SQLite persistence, a Flask web dashboard, and downloadable PDF and CSV reports.
 
-It provides modular security scanners, risk classification, SQLite result storage, a Flask web dashboard and downloadable PDF reports.
+**Project status:** V2 implementation
+**Automated tests:** 106 passing
+**Cloud provider:** Amazon Web Services (AWS)
 
 ## 1. Features
 
 CloudGuard currently includes six AWS security scanners:
 
-| AWS Service | Security Checks |
+| AWS service | Security checks |
 |---|---|
-| Amazon S3 | Public bucket policies, public ACLs and Block Public Access configuration |
+| Amazon S3 | Public bucket policies, public ACLs, and Block Public Access configuration |
 | AWS IAM | Users without MFA and potentially over-permissive policies |
-| Amazon EC2 | Security groups exposing SSH, RDP and other unrestricted inbound traffic |
+| Amazon EC2 | Security groups exposing SSH, RDP, and other unrestricted inbound traffic |
 | Amazon EBS | Unencrypted EBS volumes |
 | Amazon RDS | Publicly accessible database configuration |
-| AWS CloudTrail | Trail existence, logging status, multi-region configuration and log-file validation |
+| AWS CloudTrail | Trail existence, logging status, multi-region configuration, and log-file validation |
 
-Other features:
+Additional features:
 
 - Sequential execution of security scanners.
-- Severity classification: CRITICAL, HIGH, MEDIUM, LOW and INFO.
+- Central security rule catalogue.
+- Severity classification: CRITICAL, HIGH, MEDIUM, LOW, and INFO.
+- Per-scanner execution timing and status tracking.
+- Successful, partial, failed, and unknown scanner status reporting.
 - SQLite database for scan history and findings.
-- Flask web dashboard.
-- Individual scan details pages.
+- Flask web dashboard and individual scan details.
 - PDF security assessment reports.
+- Findings CSV export with rule and resource identifiers.
 - Application health endpoint.
-- Automated tests using pytest.
+- Automated regression and integration tests.
 
 CloudGuard is designed for detection and reporting. It does not automatically modify AWS resources or perform remediation.
 
@@ -38,56 +43,49 @@ CloudGuard is designed for detection and reporting. It does not automatically mo
 - Boto3
 - AWS CLI
 - Flask
+- Flask-WTF
 - SQLite
 - ReportLab
-- HTML, CSS, JavaScript and Bootstrap
+- HTML, CSS, JavaScript
 - pytest
+- Moto for simulated AWS testing
 
 ## 3. Project Structure
 
 ```text
-CloudGuard/
+CloudGuard-V2/
 │
 ├── app.py
 ├── config.py
 ├── run_cloudguard.py
 ├── run_s3_scan.py
-├── test_aws.py
-├── test_permissions.py
-├── requirements.txt
-├── .env.example
-├── .gitignore
-├── README.md
+├── aws_identity_diagnostic.py
+├── aws_permissions_diagnostic.py
 │
 ├── cloudguard/
-│   ├── run_s3_scan.py
-│   │
 │   ├── core/
-│   │   ├── __init__.py
+│   │   ├── aws_connection.py
+│   │   ├── export.py
+│   │   ├── rules.py
 │   │   └── scan_manager.py
 │   │
 │   ├── database/
-│   │   ├── __init__.py
 │   │   └── db_manager.py
 │   │
 │   ├── reports/
-│   │   ├── __init__.py
 │   │   └── pdf_generator.py
 │   │
 │   └── scanners/
-│       ├── __init__.py
-│       ├── s3_scanner.py
-│       ├── iam_scanner.py
-│       ├── ec2_scanner.py
-│       ├── ebs_scanner.py
-│       ├── rds_scanner.py
 │       ├── cloudtrail_scanner.py
-│       └── iam_scanner_backup.py
+│       ├── ebs_scanner.py
+│       ├── ec2_scanner.py
+│       ├── iam_scanner.py
+│       ├── rds_scanner.py
+│       └── s3_scanner.py
 │
-├── data/
-│   ├── cloudguard.db
-│   └── reports/
-│       └── (generated PDF reports)
+├── evaluation/
+│   ├── evaluate.py
+│   └── ground_truth_template.csv
 │
 ├── static/
 │   ├── css/
@@ -101,31 +99,47 @@ CloudGuard/
 │   ├── index.html
 │   └── scan_details.html
 │
-└── tests/
-    ├── test_app.py
-    ├── test_database.py
-    ├── test_s3_scanner.py
-    ├── test_iam_scanner.py
-    ├── test_ec2_scanner.py
-    ├── test_ebs_scanner.py
-    ├── test_rds_scanner.py
-    └── test_cloudtrail_scanner.py
+├── tests/
+│   ├── test_app.py
+│   ├── test_cloudtrail_scanner.py
+│   ├── test_database.py
+│   ├── test_ebs_scanner.py
+│   ├── test_ec2_scanner.py
+│   ├── test_iam_scanner.py
+│   ├── test_moto_smoke.py
+│   ├── test_p1_regressions.py
+│   ├── test_rds_scanner.py
+│   ├── test_s3_scanner.py
+│   ├── test_scan_manager_status.py
+│   └── test_v2_integration.py
+│
+├── requirements.txt
+├── requirements-dev.txt
+├── .env.example
+├── .gitignore
+├── README.md
+└── CHANGES.md
 ```
 
-**Note:** The project tree shows the expected local database and report-output locations. These are generated runtime files and should not be committed to source control. The IAM backup is retained for reference and is not an active scanner.
+Generated databases, reports, environment files, and virtual environments are excluded from source control.
 
 ## 4. Requirements
 
 - Python 3
 - pip
-- AWS CLI v2
-- An AWS account with permission to perform read-only security audits.
+- AWS CLI v2 (for AWS CLI profile configuration)
+- An AWS account with appropriate read-only audit permissions
 
-The project was tested using Python 3.14.
+The current development environment was tested with Python 3.14.
 
 ## 5. Installation
 
-Clone or download the project and open PowerShell in the project directory.
+Clone the repository:
+
+```powershell
+git clone https://github.com/TOBIOCHI/CloudGuard-.git
+cd CloudGuard-
+```
 
 Create a virtual environment:
 
@@ -139,11 +153,16 @@ Activate it:
 .\.venv\Scripts\Activate.ps1
 ```
 
-Install dependencies:
+Install application dependencies:
 
 ```powershell
-py -m pip install --upgrade pip
-py -m pip install -r requirements.txt
+python -m pip install -r requirements.txt
+```
+
+For development and testing:
+
+```powershell
+python -m pip install -r requirements-dev.txt
 ```
 
 ## 6. Environment Configuration
@@ -154,13 +173,13 @@ Create a private environment file:
 Copy-Item .env.example .env
 ```
 
-Generate a secure Flask secret:
+Generate a secure Flask secret key:
 
 ```powershell
-py -c "import secrets; print(secrets.token_hex(32))"
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-Open `.env` and set:
+Add the generated value to `.env`:
 
 ```text
 FLASK_SECRET_KEY=your_generated_secret_key
@@ -170,74 +189,63 @@ Keep `.env` private. Never upload it to GitHub or share its contents.
 
 ## 7. AWS Configuration
 
-Install AWS CLI v2 and configure a dedicated IAM audit profile.
+CloudGuard uses Boto3 to communicate with AWS.
 
-The recommended setup uses an IAM identity with the AWS-managed `SecurityAudit` policy, subject to the permissions required by the scanners.
-
-Configure the profile:
+Install AWS CLI v2 and configure a dedicated audit profile:
 
 ```powershell
 aws configure --profile cloudguard-audit
 ```
 
-Enter the access key, secret key, default region and output format locally when prompted.
+Enter your AWS credentials locally when prompted. Do not paste credentials into source code or commit them to GitHub.
 
-The tested region is:
+The recommended approach is to use an IAM identity with the AWS-managed `SecurityAudit` policy, together with any additional read permissions required by the implemented checks.
 
-```text
-eu-north-1
-```
-
-Verify the AWS identity:
+Verify the configured identity:
 
 ```powershell
 aws sts get-caller-identity --profile cloudguard-audit
 ```
 
-Never use root account credentials for routine scanning. Do not commit AWS credentials, access-key CSV files or private environment files.
+Always confirm the AWS account, region, and permissions before scanning.
 
 ## 8. Running CloudGuard
 
-Run the complete AWS scan:
+Run the complete scan:
 
 ```powershell
-py run_cloudguard.py
+python run_cloudguard.py
 ```
 
-The program runs the six scanners, gathers findings, calculates severity summaries and saves the results.
+The scan executes the six security scanners and gathers findings, severity summaries, scanner results, and errors.
 
-Scan results are stored locally in:
-
-```text
-cloudguard_scan_results.json
-data/cloudguard.db
-```
-
-The JSON report and SQLite database are local generated data and are excluded from version control by `.gitignore`.
+The web application also provides scan execution through its dashboard.
 
 ## 9. Running the Web Dashboard
 
 Start the Flask application:
 
 ```powershell
-py app.py
+python app.py
 ```
 
-Open:
+Open the dashboard:
 
 ```text
 http://127.0.0.1:5000
 ```
 
-The dashboard provides access to:
+The dashboard provides:
 
 - Latest scan overview.
 - Severity summaries.
 - AWS service results.
-- Security findings.
+- Individual security findings.
 - Scan history.
+- Scanner execution statuses.
 - Individual scan details.
 - PDF report downloads.
+- Findings CSV exports.
 
 Health endpoint:
 
@@ -245,94 +253,127 @@ Health endpoint:
 http://127.0.0.1:5000/health
 ```
 
-Stop the application with `CTRL+C`.
+Stop the application using `CTRL+C`.
 
-## 10. Running Automated Tests
+## 10. Automated Testing
 
-Run all tests:
+Install development dependencies:
 
 ```powershell
-py -m pytest -v
+python -m pip install -r requirements-dev.txt
 ```
 
-The current test suite contains 45 passing tests covering:
+Run the complete test suite:
 
-- Six AWS scanner modules.
-- Scanner pagination and detection logic.
-- SQLite database operations.
-- Flask dashboard routes.
-- Scan details and missing scan handling.
-- PDF download responses.
-- Application health endpoint.
+```powershell
+python -m pytest -q -rs
+```
 
-The tests use simulated AWS responses and temporary databases where appropriate. They do not require a live AWS scan.
+**Latest verified test result:**
 
-## 11. Risk Severity
+```text
+106 passed in 59.23s
+```
 
-CloudGuard uses five severity categories:
+The tests cover scanner logic, simulated AWS responses, database operations, dashboard routes, scan status handling, exports, security regressions, and integration behaviour.
+
+The test suite uses simulated AWS responses and does not require a live AWS scan.
+
+The scripts `aws_identity_diagnostic.py` and `aws_permissions_diagnostic.py` are manual diagnostics that contact AWS. Do not run them during offline testing.
+
+## 11. Scanner Status Tracking
+
+CloudGuard distinguishes between:
+
+- **Successful:** The scanner completed without reported errors.
+- **Partial:** The scanner returned results but also reported errors.
+- **Failed:** The scanner failed or returned an invalid result.
+- **Unknown:** Status cannot be established for older scan records.
+
+These statuses are reflected in scan summaries, service results, history, and PDF reports.
+
+## 12. Risk Severity Classification
 
 | Severity | Meaning |
 |---|---|
-| CRITICAL | A potentially severe security exposure |
-| HIGH | A significant security weakness |
-| MEDIUM | A configuration weakness requiring attention |
-| LOW | A lower-impact security improvement |
+| CRITICAL | Potentially severe security exposure |
+| HIGH | Significant security weakness |
+| MEDIUM | Configuration weakness requiring attention |
+| LOW | Lower-impact security improvement |
 | INFO | Informational observation |
 
-Severity indicates the scanner's assessment of a detected configuration. It is not a guarantee of exploitability or actual compromise.
+Severity represents the scanner's assessment of a detected configuration. It does not guarantee exploitability or actual compromise.
 
-## 12. Security and Technical Limitations
+## 13. Chapter 4 Evaluation
 
-CloudGuard is a prototype security auditing tool. Its results should be reviewed and validated before operational decisions are made.
+The `evaluation/` directory contains tools for evaluating scanner results against a controlled ground-truth dataset.
 
-Important limitations:
+Copy the template:
+
+```powershell
+Copy-Item evaluation/ground_truth_template.csv evaluation/ground_truth.csv
+```
+
+Replace the sample entries with the controlled resources used in your experiment.
+
+Expected labels are:
+
+- `PASS`
+- `FAIL`
+
+After conducting an authorised scan, export the findings CSV from the scan details page.
+
+Run the evaluation:
+
+```powershell
+python evaluation/evaluate.py evaluation/ground_truth.csv cloudguard_scan_1.csv
+```
+
+Evaluation matches records using exact, case-sensitive resource type, resource identifier, and rule ID.
+
+Invalid labels, empty identity fields, and duplicate ground-truth records are rejected. Findings without mapped rule IDs remain visible but are not counted as matched evaluation results.
+
+Only use controlled resources and ground-truth labels that have been independently verified.
+
+## 14. Security Considerations and Limitations
+
+CloudGuard is an educational and research-oriented prototype. Its results should be reviewed and validated before operational decisions are made.
+
+Known limitations include:
 
 - IAM policy analysis uses simplified wildcard and administrator-policy checks. It is not a complete AWS effective-permissions evaluator.
 - IAM users without MFA may be programmatic identities that do not use console sign-in.
 - EC2 security-group rules alone do not prove that a resource is reachable from the internet.
 - An RDS `PubliclyAccessible` setting does not independently prove internet reachability.
 - EBS checks currently focus on encryption status of existing volumes.
-- CloudTrail findings are based on the trails returned in the selected region. They do not establish that AWS Event History is unavailable.
+- CloudTrail findings are based on trails returned in the selected region. They do not establish that AWS Event History is unavailable.
 - Some AWS resources and services are region-specific.
-- A scan with zero findings does not prove that an AWS account is completely secure.
-- CloudGuard performs read-only checks and does not automatically remediate detected issues.
+- Zero findings do not prove that an AWS account is completely secure.
 
-Always confirm the selected AWS account, region and IAM permissions before running a scan.
+CloudGuard performs read-only security checks and does not automatically remediate detected issues.
 
-## 13. Project Status
+Only scan AWS accounts and resources for which you have explicit authorisation.
 
-Current implementation:
+## 15. Project Status
+
+Current V2 implementation:
 
 - Six modular AWS security scanners.
 - Central scan manager.
+- Central rule catalogue.
+- Improved S3 Block Public Access evaluation.
+- Scanner execution timing and status tracking.
 - SQLite persistence.
 - Flask dashboard.
-- PDF report generation.
+- PDF and CSV report generation.
 - Health monitoring endpoint.
 - Environment-based Flask secret configuration.
-- Automated test suite: 45 passing tests.
+- Automated test suite: 106 passing tests.
 
-## 14. Disclaimer
+## 16. Disclaimer
 
 CloudGuard is an educational and research-oriented cloud security auditing project.
 
-Only scan AWS accounts and resources for which you have explicit authorization. The project is provided for security assessment, learning and demonstration purposes.
+It is provided for learning, experimentation, and authorised security assessment. The tool is not a replacement for a comprehensive professional cloud security assessment.
 
-
-## CloudGuard V2 integration notes
-
-This V2 copy preserves the Temporary-Review Flask dashboard, six original scanners (including RDS), SQLite database manager and PDF reporting. It adds per-module timing, a central rule catalogue for mapped checks, improved effective S3 Block Public Access evaluation, bucket-level error isolation, Chapter 4 evaluation assets and a findings CSV export.
-
-### Run tests safely
-
-Install development dependencies with `python -m pip install -r requirements-dev.txt`, then run `python -m pytest -q`. The scripts `aws_identity_diagnostic.py` and `aws_permissions_diagnostic.py` are manual diagnostics that contact AWS; they are deliberately not pytest-discovered. Do not run them during offline testing.
-
-### Chapter 4 evaluation
-
-Copy `evaluation/ground_truth_template.csv` to `evaluation/ground_truth.csv`, then replace the sample resource types and exact resource identifiers with the controlled resources used in your experiment and set each expected label to `PASS` or `FAIL`. Run an authorised scan separately, export its findings CSV from the scan details page, then run:
-
-```powershell
-python evaluation/evaluate.py evaluation/ground_truth.csv cloudguard_scan_1.csv
-```
-
-The findings CSV contains `rule_id`, `resource_type`, and `resource_id` in addition to the legacy `resource` display column and supporting finding fields. Evaluation matches only on an exact, case-sensitive resource type, resource identifier, and rule ID; it does not use substring matching. Ground-truth rows with empty identity fields, labels other than `PASS` or `FAIL`, or duplicate `(resource_type, resource_id, rule_id)` records are rejected. Findings without a mapped rule ID remain visible as unlabelled findings and are not counted as Chapter 4 matches. The template includes only checks currently implemented and mapped by the scanners; for example, it excludes EBS encryption-by-default and the no-customer-managed-CloudTrail-trail check.
+Always obtain explicit permission before scanning AWS accounts or resources.
