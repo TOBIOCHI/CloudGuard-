@@ -15,3 +15,9 @@ RDS remains enabled because the supplied archives do not contain the approved Ch
 
 ## Safety
 No real AWS scan was run and no AWS resources were created, changed or deleted. Tests must use mocks/Moto only.
+
+## Windows handoff preparation
+- Added Windows setup and dashboard launcher scripts for a fresh local installation.
+- Updated the README project tree and Windows installation instructions.
+- Corrected the documented test-suite count to the latest locally verified result (106 passing tests).
+- The installer creates a per-project virtual environment and a local Flask secret; AWS CLI installation and AWS credential configuration remain the user's responsibility.
